@@ -78,6 +78,9 @@ sort_by = form.getvalue('sort_by')
 # Get section parameter for tabs
 section = form.getvalue('section')
 
+# Set default sorting order
+default_order = "first, last"  # Sort by first name by default
+
 # Print the content type
 print("Content-type: text/html\n")
 
@@ -118,12 +121,9 @@ print("<br>")
 print("<input type='submit' value='Search'>")
 print("</form>")
 print("<form method='get' action='table.cgi'>")
-print("<input type='hidden' name='sort_by' value='name'>")
-print("<input type='submit' value='Sort by Name'>")
-print("</form>")
-print("<form method='get' action='table.cgi'>")
-print("<input type='hidden' name='sort_by' value='rank'>")
-print("<input type='submit' value='Sort by Rank'>")
+print("<input type='hidden' name='section' value='{}'>".format(section))
+print("<input type='submit' name='sort_by' value='first'>Sort by Name")
+print("<input type='submit' name='sort_by' value='rank'>Sort by Rank")
 print("</form>")
 
 # New tab for Courses
@@ -143,11 +143,10 @@ print("<form method='get' action='table.cgi'>")
 print("<input type='submit' value='Faculty Table'>")
 print("</form>")
 
-# Fetch data based on section
-# Fetch data based on section
+# Fetch data based on section and sorting option
 if section == 'courses':
     try:
-        # Connect to the PostgreSQL database
+        # Fetch data from the courses table
         conn = psycopg2.connect(
             dbname='group2db',
             user='webuser1',
@@ -155,12 +154,8 @@ if section == 'courses':
             host='192.168.56.20'
         )
         cur = conn.cursor()
-
-        # Fetch data from the courses table
         cur.execute("SELECT * FROM courses")
         rows = cur.fetchall()
-
-        # Close cursor and connection
         cur.close()
         conn.close()
 
@@ -181,7 +176,8 @@ elif section == 'fte':
 
 else:
     # Fetch faculty data based on search parameters
-    rows = fetch_faculty_data_by_search(first_query, mi_query, last_query, honorific_query, email_query, phone_query, office_query, research_query, rank_query, remarks_query)
+    order_by = sort_by if sort_by else default_order
+    rows = fetch_faculty_data_by_search(first_query, mi_query, last_query, honorific_query, email_query, phone_query, office_query, research_query, rank_query, remarks_query, order_by)
 
     # Print table rows
     print("<table border='1'>")
