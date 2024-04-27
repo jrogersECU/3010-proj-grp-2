@@ -10,7 +10,8 @@ def fetch_faculty_data_by_search(first=None, mi=None, last=None, honorific=None,
             dbname='group2db',
             user='webuser1',
             password='student',
-            host='192.168.56.20'
+            host='localhost',
+	    port='5432'
         )
         cur = conn.cursor()
 
@@ -151,7 +152,7 @@ if section == 'courses':
             dbname='group2db',
             user='webuser1',
             password='student',
-            host='192.168.56.20'
+            host='localhost'
         )
         cur = conn.cursor()
         cur.execute("SELECT * FROM courses")
@@ -172,7 +173,110 @@ if section == 'courses':
         print("<p>Error: {}</p>".format(e))
 
 elif section == 'fte':
-    print('placeholder for FTE section')
+    try:
+        # Get query parameters from the URL
+        form = cgi.FieldStorage()
+
+        # Get search parameters from the URL
+        search_faculty = form.getvalue('faculty')
+        search_year = form.getvalue('year')
+        search_semester = form.getvalue('semester')
+
+        # Connect to the PostgreSQL database
+        conn = psycopg2.connect(
+            dbname='group2db',
+            user='webuser1',
+            password='student',
+            host='localhost'
+        )
+        cur = conn.cursor()
+
+        # Fetch data from the faculty and schedule tables based on search parameters
+        sql_query = """
+            SELECT 
+                f.honorific || ' ' || f.first || ' ' || f.last AS faculty_name,
+                s.year,
+                s.semester,
+                c.number,
+                c.ch,
+                c.prefix,
+                c.gu,
+                s.enrollment
+            FROM 
+                faculty f 
+            JOIN 
+                schedule s ON f.id = s.instructor
+            JOIN
+                courses c ON s.number = c.number
+            WHERE 1=1
+        """
+        if search_faculty:
+            # Search for any part of the faculty name
+            sql_query += " AND (f.honorific || ' ' || f.first || ' ' || f.last ILIKE '%{}%')".format(search_faculty)
+        if search_year:
+            sql_query += " AND s.year = '{}'".format(search_year)
+        if search_semester:
+            sql_query += " AND s.semester ILIKE '%{}%'".format(search_semester)
+
+        cur.execute(sql_query)
+        rows = cur.fetchall()
+
+        # Initialize FTE variable
+        fte = 0.0
+
+        # Print search form
+        print("<form method='get' action='table.cgi'>")
+        print("<input type='hidden' name='section' value='fte'>")
+        print("<label for='faculty'>Faculty:</label>")
+        print("<input type='text' id='faculty' name='faculty' value='{}'>".format(search_faculty if search_faculty else ''))
+        print("<label for='year'>Year:</label>")
+        print("<input type='text' id='year' name='year' value='{}'>".format(search_year if search_year else ''))
+        print("<label for='semester'>Semester:</label>")
+        print("<input type='text' id='semester' name='semester' value='{}'>".format(search_semester if search_semester else ''))
+        print("<input type='submit' value='Search'>")
+        print("</form>")
+
+        # Print table header
+        print("<table border='1'>")
+        print("<tr><th>Faculty Name</th><th>Year</th><th>Semester</th><th>FTE</th></tr>")
+
+        # Print faculty names, year, semester, and an empty column for FTE
+        for row in rows:
+            faculty_name = row[0]
+            year = row[1]
+            semester = row[2]
+            number = row[3]
+            ch = row[4]
+            prefix = row[5]
+            gu = row[6]
+            enrollment = row[7]
+
+            # Determine the appropriate formula based on prefix and gu
+            if prefix == 'CSCI':
+                if gu == 'U':
+                    fte = (ch * enrollment) / 406.24
+                elif gu == 'G':
+                    fte = (ch * enrollment) / 186.23
+            elif prefix == 'SENG':
+                if gu == 'U':
+                    fte = (ch * enrollment) / 232.25
+                elif gu == 'G':
+                    fte = (ch * enrollment) / 90.17
+            elif prefix == 'DASC':
+                fte = (ch * enrollment) / 186.23
+            else:
+                fte = 'N/A'  # No matching prefix, set FTE as 'N/A'
+
+            print("<tr><td>{}</td><td>{}</td><td>{}</td><td>{:.2f}</td></tr>".format(faculty_name, year, semester, fte))
+
+        print("</table>")
+        
+        cur.close()
+        conn.close()
+        
+    except Exception as e:
+        print("<p>Error: {}</p>".format(e))
+
 
 else:
     # Fetch faculty data based on search parameters

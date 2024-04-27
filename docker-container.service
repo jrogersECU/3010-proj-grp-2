@@ -1,0 +1,13 @@
+[Unit]
+Description=My Docker Container
+Requires=docker.service
+After=docker.service
+
+[Service]
+Restart=always
+ExecStart=/usr/bin/docker start -a dry-run2
+ExecStop=/usr/bin/docker stop -t 20 dry-run2
+
+[Install]
+WantedBy=default.target
+

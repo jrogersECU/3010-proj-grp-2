@@ -1,0 +1,40 @@
+# Use Ubuntu 22.04 as the base image
+FROM ubuntu:22.04
+
+# Set environment variables to suppress interactive prompts during installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install sudo, PostgreSQL, and text editors
+RUN apt-get update && \
+    apt-get -y install sudo postgresql nano vim
+
+# Expose PostgreSQL default port
+EXPOSE 5432
+
+# Add a new user 'dockeruser' and add it to the sudo group
+RUN useradd -m dockeruser && \
+    echo "dockeruser:dockeruser" | chpasswd && \
+    adduser dockeruser sudo
+
+# Allow dockeruser to execute commands without password
+RUN echo "dockeruser ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/dockeruser
+
+# Copy the dump.sql file into the Docker image
+COPY dump.sql /tmp/
+
+# Change ownership of pg_hba.conf to postgres user
+RUN chown postgres:postgres /etc/postgresql/14/main/pg_hba.conf
+
+# Modify pg_hba.conf to allow connections from any IP address
+RUN echo "host all  all    0.0.0.0/0  md5" >> /etc/postgresql/14/main/pg_hba.conf
+
+# Modify PostgreSQL configuration to listen on all interfaces
+RUN sed -i "s/#listen_addresses = 'localhost'/listen_addresses = '*'/" /etc/postgresql/14/main/postgresql.conf
+
+# Start PostgreSQL service and create the database if it doesn't exist
+CMD service postgresql start && \
+    sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='group2db'" | grep -q 1 || sudo -u postgres createdb group2db && \
+    sudo -u postgres psql -d group2db -f /tmp/dump.sql && \
+    tail -f /dev/null
+
+
