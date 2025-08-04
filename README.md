@@ -1,6 +1,6 @@
 This readme is an explanation of Group2's phase 4 submission.
 
-The main directory containes the service fiel that is used to automatically start the docker containter named "dry-run2", which is the container that we created from the imahe named "image" which was built from the dockerfile.
+The main directory containes the service fiel that is used to automatically start the docker containter named "dry-run2", which is the container that we created from the image named "image" which was built from the dockerfile.
 
 The dockerfile folder contains the docker file, configuration files from the sql vm, and the sql.dump file of the sql database from the sqlvm
 
